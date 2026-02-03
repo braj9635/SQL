@@ -40,22 +40,48 @@ export function SQLEditor({ query, onChange, onRun, className }: SQLEditorProps)
         </div>
       </div>
       
-      <div className="flex-1 overflow-auto relative font-mono text-sm bg-white cursor-text" onClick={() => {
-          // Focus hack if needed, but the editor usually handles it
-      }}>
+      <div className="flex-1 overflow-auto relative font-mono text-sm bg-white cursor-text">
         <Editor
           value={query}
           onValueChange={onChange}
           highlight={(code) => highlight(code, languages.sql, 'sql')}
           padding={16}
+          textareaId="sql-editor-textarea"
           className="font-mono min-h-full"
+          textareaClassName="focus:outline-none"
           style={{
             fontFamily: '"Fira Code", "Fira Mono", monospace',
             fontSize: 14,
             minHeight: '100%',
           }}
-          textareaClassName="focus:outline-none"
         />
+      </div>
+      
+      {/* Mobile-friendly Symbol Toolbar */}
+      <div className="flex items-center gap-2 overflow-x-auto py-2 px-4 bg-slate-50 border-t border-slate-200 no-scrollbar">
+        {['*', '=', '!=', '(', ')', ',', ';', "'", 'AND', 'OR', 'SELECT', 'FROM', 'WHERE', 'ORDER BY'].map((symbol) => (
+          <button
+            key={symbol}
+            onClick={() => {
+              const textarea = document.getElementById('sql-editor-textarea') as HTMLTextAreaElement;
+              if (textarea) {
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const newQuery = query.substring(0, start) + symbol + query.substring(end);
+                onChange(newQuery);
+                setTimeout(() => {
+                  textarea.focus();
+                  textarea.setSelectionRange(start + symbol.length, start + symbol.length);
+                }, 0);
+              } else {
+                onChange(query + symbol);
+              }
+            }}
+            className="flex-shrink-0 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded shadow-sm active:bg-slate-100 active:scale-95 transition-all whitespace-nowrap"
+          >
+            {symbol}
+          </button>
+        ))}
       </div>
     </div>
   );

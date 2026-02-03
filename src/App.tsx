@@ -1,24 +1,50 @@
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
-import { Sidebar } from './components/Sidebar';
+import { Sidebar, HistoryItem } from './components/Sidebar';
 import { SQLEditor } from './components/SQLEditor';
 import { ResultsTable } from './components/ResultsTable';
 import { executeMockQuery, QueryResult } from './lib/mockDb';
+import { Challenge } from './lib/challenges';
 import { cn } from './utils/cn';
+import { InstallPrompt } from './components/InstallPrompt';
 
 export function App() {
-  const [query, setQuery] = useState<string>("SELECT * FROM users");
+  const [query, setQuery] = useState<string>("SELECT * FROM customers");
   const [result, setResult] = useState<QueryResult | null>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleRunQuery = () => {
     const res = executeMockQuery(query);
     setResult(res);
+    
+    // Add to history
+    const newItem: HistoryItem = {
+      query: query,
+      timestamp: new Date(),
+      status: res.error ? 'error' : 'success',
+      result: res
+    };
+    
+    setHistory(prev => [...prev, newItem]);
   };
 
   const handleSelectTable = (tableName: string) => {
-    setQuery(`SELECT * FROM ${tableName}`);
+    const newQuery = `SELECT * FROM ${tableName}`;
+    setQuery(newQuery);
     setIsSidebarOpen(false); // Close sidebar on mobile when selection made
+  };
+  
+  const handleSelectHistory = (item: HistoryItem) => {
+    setQuery(item.query);
+    setResult(item.result || null);
+    setIsSidebarOpen(false);
+  };
+
+  const handleSelectChallenge = (challenge: Challenge) => {
+    setQuery(`-- Challenge: ${challenge.title}\n${challenge.sql}`);
+    setResult(null);
+    setIsSidebarOpen(false);
   };
 
   return (
@@ -34,6 +60,9 @@ export function App() {
       {/* Sidebar - Responsive */}
       <Sidebar 
         onSelectTable={handleSelectTable} 
+        history={history}
+        onSelectHistory={handleSelectHistory}
+        onSelectChallenge={handleSelectChallenge}
         className={cn(
           "shrink-0 transition-transform duration-200 ease-in-out md:translate-x-0 md:relative md:inset-auto md:h-full md:shadow-none",
           // Mobile styles
@@ -62,8 +91,11 @@ export function App() {
                <h1 className="font-bold text-lg text-slate-800 tracking-tight sm:hidden">SQL</h1>
              </div>
           </div>
-          <div className="text-xs text-slate-500 hidden sm:block">
-             Mock In-Memory Database
+          <div className="flex items-center gap-2">
+             <InstallPrompt />
+             <div className="text-xs text-slate-500 hidden sm:block">
+                Mock In-Memory Database
+             </div>
           </div>
         </header>
 

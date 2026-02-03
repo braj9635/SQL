@@ -7,19 +7,33 @@ export interface TableSchema {
 
 export const SCHEMA: TableSchema[] = [
   {
-    name: "users",
+    name: "departments",
+    columns: [
+      { name: "id", type: "INTEGER" },
+      { name: "name", type: "VARCHAR" },
+      { name: "location", type: "VARCHAR" },
+    ],
+    data: [
+      { id: 1, name: "Engineering", location: "Building A" },
+      { id: 2, name: "HR", location: "Building B" },
+      { id: 3, name: "Sales", location: "Building C" },
+      { id: 4, name: "Marketing", location: "Building A" },
+    ],
+  },
+  {
+    name: "customers",
     columns: [
       { name: "id", type: "INTEGER" },
       { name: "name", type: "VARCHAR" },
       { name: "email", type: "VARCHAR" },
-      { name: "role", type: "VARCHAR" },
+      { name: "department_id", type: "INTEGER" },
     ],
     data: [
-      { id: 1, name: "Alice Johnson", email: "alice@example.com", role: "admin" },
-      { id: 2, name: "Bob Smith", email: "bob@example.com", role: "user" },
-      { id: 3, name: "Charlie Brown", email: "charlie@example.com", role: "user" },
-      { id: 4, name: "Diana Prince", email: "diana@example.com", role: "moderator" },
-      { id: 5, name: "Evan Wright", email: "evan@example.com", role: "user" },
+      { id: 1, name: "Alice Johnson", email: "alice@example.com", department_id: 1 },
+      { id: 2, name: "Bob Smith", email: "bob@example.com", department_id: 3 },
+      { id: 3, name: "Charlie Brown", email: "charlie@example.com", department_id: 2 },
+      { id: 4, name: "Diana Prince", email: "diana@example.com", department_id: 1 },
+      { id: 5, name: "Evan Wright", email: "evan@example.com", department_id: 4 },
     ],
   },
   {
@@ -43,17 +57,17 @@ export const SCHEMA: TableSchema[] = [
     name: "orders",
     columns: [
       { name: "id", type: "INTEGER" },
-      { name: "user_id", type: "INTEGER" },
+      { name: "customer_id", type: "INTEGER" },
       { name: "total", type: "DECIMAL" },
       { name: "status", type: "VARCHAR" },
       { name: "created_at", type: "DATETIME" },
     ],
     data: [
-      { id: 1001, user_id: 1, total: 29.99, status: "completed", created_at: "2023-10-01" },
-      { id: 1002, user_id: 2, total: 102.49, status: "pending", created_at: "2023-10-02" },
-      { id: 1003, user_id: 1, total: 199.99, status: "completed", created_at: "2023-10-05" },
-      { id: 1004, user_id: 3, total: 12.50, status: "shipped", created_at: "2023-10-06" },
-      { id: 1005, user_id: 4, total: 95.98, status: "cancelled", created_at: "2023-10-08" },
+      { id: 1001, customer_id: 1, total: 29.99, status: "completed", created_at: "2023-10-01" },
+      { id: 1002, customer_id: 2, total: 102.49, status: "pending", created_at: "2023-10-02" },
+      { id: 1003, customer_id: 1, total: 199.99, status: "completed", created_at: "2023-10-05" },
+      { id: 1004, customer_id: 3, total: 12.50, status: "shipped", created_at: "2023-10-06" },
+      { id: 1005, customer_id: 4, total: 95.98, status: "cancelled", created_at: "2023-10-08" },
     ],
   },
 ];
@@ -66,24 +80,28 @@ export interface QueryResult {
   executionTime?: number;
 }
 
+// Helper to strip SQL comments
+function stripComments(sql: string): string {
+  // Remove single-line comments (-- ...)
+  let cleanSql = sql.replace(/--.*/g, " ");
+  // Remove multi-line comments (/* ... */)
+  cleanSql = cleanSql.replace(/\/\*[\s\S]*?\*\//g, " ");
+  return cleanSql;
+}
+
 export function executeMockQuery(query: string): QueryResult {
   const startTime = performance.now();
-  const normalizedQuery = query.trim();
-  const lowerQuery = normalizedQuery.toLowerCase();
-
-  // Very basic simulated delay
-  // await new Promise(r => setTimeout(r, 100)); // synchronous for now
-
+  
   try {
+    const cleanQuery = stripComments(query);
+    const normalizedQuery = cleanQuery.trim();
+    const lowerQuery = normalizedQuery.toLowerCase();
+
     if (!normalizedQuery) {
       return { columns: [], rows: [], error: "Query is empty" };
     }
 
     // Simple SELECT parser
-    // Supported: SELECT * FROM [table]
-    // Supported: SELECT [col1], [col2] FROM [table]
-    // Supported: SELECT ... FROM [table] WHERE [col] = [val] (basic equality)
-    
     if (lowerQuery.startsWith("select")) {
       const fromIndex = lowerQuery.indexOf("from");
       if (fromIndex === -1) {
@@ -103,7 +121,6 @@ export function executeMockQuery(query: string): QueryResult {
       }
 
       // Find table
-      // Remove potential trailing semicolon
       tableName = tableName.replace(/;$/, "");
       
       const table = SCHEMA.find(t => t.name.toLowerCase() === tableName.toLowerCase());
@@ -132,7 +149,6 @@ export function executeMockQuery(query: string): QueryResult {
 
           resultData = resultData.filter(row => {
             const rowVal = row[col];
-            // Loose comparison for simplicity
              switch (op) {
                 case "=": return rowVal == val;
                 case "!=": return rowVal != val;
@@ -175,11 +191,6 @@ export function executeMockQuery(query: string): QueryResult {
         executionTime: endTime - startTime
       };
     } 
-    
-    // UPDATE / DELETE / INSERT (Mock)
-    // We won't actually modify the mock data persistently to keep it simple, 
-    // or we can just say "Success" without changing it, or actually change it in memory?
-    // Let's just return a success message for now.
     
     const endTime = performance.now();
     
